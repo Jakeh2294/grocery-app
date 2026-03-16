@@ -210,11 +210,13 @@ export default function App() {
   }
 
   function toggleSkip(itemId) {
-    const updated = activeList.map((item) =>
-      item.id === itemId ? { ...item, skipped: !item.skipped, checked: false } : item
-    );
-    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
-  }
+  const updated = activeList.map((item) =>
+    item.id === itemId ? { ...item, skipped: !item.skipped, checked: false } : item
+  );
+  persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+  const remainingSkipped = updated.filter((i) => i.skipped).length;
+  if (remainingSkipped === 0) setShowSkipped(false);
+}
 
   function deleteItem(itemId) {
     const updated = activeList.filter((item) => item.id !== itemId);

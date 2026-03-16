@@ -716,14 +716,14 @@ export default function App() {
               </div>
 
               {skippedCount > 0 && (
-                <div style={styles.skippedToggle} onClick={() => setShowSkipped((v) => !v)}>
-                  <span style={{ fontSize: 14 }}>{showSkipped ? "▾" : "▸"}</span>
-                  <span style={styles.skippedToggleText}>
-                    {showSkipped ? "Hide skipped" : "Show skipped this week"}
-                  </span>
-                  <span style={styles.skippedBadge}>{skippedCount}</span>
-                </div>
-              )}
+  <div style={styles.skippedToggle} onClick={() => setShowSkipped((v) => !v)}>
+    <span style={{ fontSize: 14 }}>{showSkipped ? "◀" : "▸"}</span>
+    <span style={styles.skippedToggleText}>
+      {showSkipped ? "← Back to list" : "Show skipped this week"}
+    </span>
+    <span style={styles.skippedBadge}>{skippedCount}</span>
+  </div>
+)}
 
               {visibleItems.length === 0 && (
                 <div style={{ textAlign: "center", color: "#bbb", marginTop: 40, fontSize: 14 }}>

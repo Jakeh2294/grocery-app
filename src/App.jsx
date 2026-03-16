@@ -1,567 +1,943 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
-// ─── Store Config ─────────────────────────────────────────────────────────────
-const STORES = {
-  tj: { name: "Trader Joe's", short: "TJ", emoji: "🛒", color: "#c8102e", light: "#fff5f5" },
-  wf: { name: "Whole Foods",  short: "WF", emoji: "🌿", color: "#00674b", light: "#f0faf5" },
-  lr: { name: "LaRocca's",   short: "LR", emoji: "🏪", color: "#7b4f27", light: "#fdf6ee" },
-};
-
-// ─── Default Lists ────────────────────────────────────────────────────────────
-const DEFAULTS = {
-  lr: [
-    { id:"lr1",  name:"Fresh Fruit (Chelsea)",         qty:1,    unit:"",       cat:"produce",  checked:false },
-    { id:"lr2",  name:"Fresh Fruit (Jake & Rachel)",   qty:1,    unit:"",       cat:"produce",  checked:false },
-    { id:"lr3",  name:"Skirt Steak (Rachel)",          qty:0.5,  unit:"lb",     cat:"meat",     checked:false },
-    { id:"lr4",  name:"Grill Protein (Jake)",          qty:0.75, unit:"lb",     cat:"meat",     checked:false },
-    { id:"lr5",  name:"Flowers for Rachel",            qty:1,    unit:"",       cat:"other",    checked:false },
-  ],
-  wf: [
-    { id:"wf1",  name:"Chicken Fingers",               qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"wf2",  name:"Banza Pizza",                   qty:1, unit:"",       cat:"frozen",   checked:false },
-    { id:"wf3",  name:"Veggie Dinosaur Nuggets",       qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"wf4",  name:"Fresh Parmesan",                qty:1, unit:"wedge",  cat:"dairy",    checked:false },
-    { id:"wf5",  name:"Tea",                           qty:1, unit:"box",    cat:"pantry",   checked:false },
-    { id:"wf6",  name:"Food to Grill",                 qty:1, unit:"",       cat:"meat",     checked:false },
-  ],
-  tj: [
-    { id:"tj1",  name:"Avocados",                           qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj2",  name:"Fresh Fruit (Chelsea)",              qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj3",  name:"Sweet Potato",                       qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj4",  name:"Blueberries",                        qty:1, unit:"pint",   cat:"produce",  checked:false },
-    { id:"tj5",  name:"Apples",                             qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj6",  name:"Tomatoes",                           qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj7",  name:"Bananas",                            qty:1, unit:"bunch",  cat:"produce",  checked:false },
-    { id:"tj8",  name:"Edamame",                            qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj9",  name:"Kale",                               qty:1, unit:"bunch",  cat:"produce",  checked:false },
-    { id:"tj10", name:"Mini Cucumbers",                     qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj11", name:"Peppers",                            qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj12", name:"Big Carrots",                        qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj13", name:"Oranges",                            qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj14", name:"Asparagus",                          qty:1, unit:"bunch",  cat:"produce",  checked:false },
-    { id:"tj15", name:"Baby Corn",                          qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj16", name:"Lemons",                             qty:3, unit:"",       cat:"produce",  checked:false },
-    { id:"tj17", name:"Zucchini",                           qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj18", name:"Regular Potato",                     qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj19", name:"Corn",                               qty:1, unit:"",       cat:"produce",  checked:false },
-    { id:"tj20", name:"Strawberries",                       qty:1, unit:"pint",   cat:"produce",  checked:false },
-    { id:"tj21", name:"Spinach",                            qty:1, unit:"bag",    cat:"produce",  checked:false },
-    { id:"tj22", name:"Eggs",                               qty:1, unit:"dozen",  cat:"dairy",    checked:false },
-    { id:"tj23", name:"Mexican Cheese",                     qty:1, unit:"bag",    cat:"dairy",    checked:false },
-    { id:"tj24", name:"Feta",                               qty:1, unit:"block",  cat:"dairy",    checked:false },
-    { id:"tj25", name:"Babybel Cheese",                     qty:1, unit:"pkg",    cat:"dairy",    checked:false },
-    { id:"tj26", name:"Fresh Mozzarella Balls",             qty:1, unit:"tub",    cat:"dairy",    checked:false },
-    { id:"tj27", name:"Almond Milk",                        qty:1, unit:"carton", cat:"dairy",    checked:false },
-    { id:"tj28", name:"Plain 0% Greek Yogurt",              qty:1, unit:"large",  cat:"dairy",    checked:false },
-    { id:"tj29", name:"Yogurt Tubes",                       qty:1, unit:"box",    cat:"dairy",    checked:false },
-    { id:"tj30", name:"Kids Yogurts (Chelsea)",             qty:1, unit:"pack",   cat:"dairy",    checked:false },
-    { id:"tj31", name:"Orange Juice",                       qty:1, unit:"carton", cat:"dairy",    checked:false },
-    { id:"tj32", name:"Shredded Mozzarella",                qty:1, unit:"bag",    cat:"dairy",    checked:false },
-    { id:"tj33", name:"String Cheese (Chelsea)",            qty:1, unit:"pkg",    cat:"dairy",    checked:false },
-    { id:"tj34", name:"Whipped Cream",                      qty:1, unit:"can",    cat:"dairy",    checked:false },
-    { id:"tj35", name:"Frozen Berries",                     qty:2, unit:"bags",   cat:"frozen",   checked:false },
-    { id:"tj36", name:"Falafel",                            qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"tj37", name:"In-Shell Edamame",                   qty:2, unit:"bags",   cat:"frozen",   checked:false },
-    { id:"tj38", name:"Turkey Meatballs",                   qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"tj39", name:"Pre-Cooked Grilled Chicken",         qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"tj40", name:"Organic Chicken Nuggets",            qty:1, unit:"pkg",    cat:"frozen",   checked:false },
-    { id:"tj41", name:"Butternut Squash Ravioli",           qty:1, unit:"pkg",    cat:"pasta",    checked:false },
-    { id:"tj42", name:"Pesto",                              qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj43", name:"Brown Rice",                         qty:1, unit:"bag",    cat:"grains",   checked:false },
-    { id:"tj44", name:"Whole Wheat Pasta",                  qty:1, unit:"box",    cat:"pasta",    checked:false },
-    { id:"tj45", name:"Chickpea Pasta",                     qty:2, unit:"boxes",  cat:"pasta",    checked:false },
-    { id:"tj46", name:"Colored Pasta",                      qty:2, unit:"boxes",  cat:"pasta",    checked:false },
-    { id:"tj47", name:"Plain Pasta",                        qty:1, unit:"box",    cat:"pasta",    checked:false },
-    { id:"tj48", name:"Couscous (Large Pearls)",            qty:1, unit:"box",    cat:"grains",   checked:false },
-    { id:"tj49", name:"Tomato Sauce",                       qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj50", name:"Kalamata Olives",                    qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj51", name:"Black Olives",                       qty:1, unit:"can",    cat:"pantry",   checked:false },
-    { id:"tj52", name:"Peanut Butter (creamy, no salt)",    qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj53", name:"Honey",                              qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj54", name:"Pickles",                            qty:1, unit:"jar",    cat:"pantry",   checked:false },
-    { id:"tj55", name:"Mac & Cheese (shells)",              qty:1, unit:"box",    cat:"pantry",   checked:false },
-    { id:"tj56", name:"Teriyaki Sauce",                     qty:1, unit:"bottle", cat:"pantry",   checked:false },
-    { id:"tj57", name:"General Tso Sauce",                  qty:1, unit:"bottle", cat:"pantry",   checked:false },
-    { id:"tj58", name:"Ketchup",                            qty:1, unit:"bottle", cat:"pantry",   checked:false },
-    { id:"tj59", name:"Baking Soda",                        qty:1, unit:"box",    cat:"baking",   checked:false },
-    { id:"tj60", name:"Almond Flour Tortilla Shells",       qty:4, unit:"packs",  cat:"pantry",   checked:false },
-    { id:"tj61", name:"Pita",                               qty:1, unit:"pkg",    cat:"bakery",   checked:false },
-    { id:"tj62", name:"Pistachios (light salt)",            qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj63", name:"Pretzels",                           qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj64", name:"Grainless Granola (purple bag)",     qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj65", name:"Dried Mango",                        qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj66", name:"Cashews (no salt)",                  qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj67", name:"PBJ Bites",                          qty:1, unit:"pkg",    cat:"snacks",   checked:false },
-    { id:"tj68", name:"Chelsea Granola Bars",               qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj69", name:"Strawberry Chips",                   qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj70", name:"Apple Chips",                        qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj71", name:"Cashew Travel Packs",                qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj72", name:"Peanuts (light salt)",               qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj73", name:"Light Salt Cashews",                 qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj74", name:"Travel Nut Packs",                   qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj75", name:"Banana Chips",                       qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj76", name:"Cheese Sandwich Crackers",           qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj77", name:"Saltines / Oyster Crackers",         qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj78", name:"Cheddar Rockets",                    qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj79", name:"Peapod Chips",                       qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj80", name:"Bamba",                              qty:1, unit:"bag",    cat:"snacks",   checked:false },
-    { id:"tj81", name:"Chelsea Blueberry Bars",             qty:1, unit:"box",    cat:"snacks",   checked:false },
-    { id:"tj82", name:"Seltzer",                            qty:1, unit:"case",   cat:"beverages",checked:false },
-    { id:"tj83", name:"Chamomile Tea",                      qty:1, unit:"box",    cat:"beverages",checked:false },
-    { id:"tj84", name:"Cheerios",                           qty:1, unit:"box",    cat:"breakfast",checked:false },
-    { id:"tj85", name:"Avocado Oil Spray",                  qty:1, unit:"can",    cat:"pantry",   checked:false },
-  ],
-};
-
-// ─── Meal Pool ────────────────────────────────────────────────────────────────
-const ALL_MEALS = [
-  { id:"m1",  emoji:"🍝", name:"Pasta with Pesto",          tags:["quick","vegetarian"],  note:"Any TJ pasta + pesto + fresh mozzarella. 15-min dinner.",        needs:["pasta","pesto","mozzarella"] },
-  { id:"m2",  emoji:"🥩", name:"Grilled Skirt Steak Night", tags:["grill","Rachel"],       note:"Rachel's ½ lb skirt steak from LaRocca's + grilled asparagus.",  needs:["skirt steak","asparagus","lemons"] },
-  { id:"m3",  emoji:"🍱", name:"Turkey Meatball Bowls",     tags:["quick","family"],       note:"TJ turkey meatballs over brown rice with wilted spinach.",        needs:["turkey meatballs","brown rice","spinach"] },
-  { id:"m4",  emoji:"🌯", name:"Falafel Wraps",             tags:["vegetarian","quick"],   note:"TJ falafel in almond flour tortillas with kale + tomatoes.",     needs:["falafel","tortilla","kale","tomatoes"] },
-  { id:"m5",  emoji:"🍗", name:"Teriyaki Chicken Bowls",    tags:["family","grill"],       note:"Marinate chicken in TJ teriyaki, serve over brown rice.",        needs:["chicken","teriyaki sauce","brown rice"] },
-  { id:"m6",  emoji:"🍝", name:"Butternut Squash Ravioli",  tags:["quick","vegetarian"],   note:"Brown butter + fresh parmesan — elegant 15-min dinner.",         needs:["butternut squash ravioli","parmesan"] },
-  { id:"m7",  emoji:"🍜", name:"General Tso Chicken",       tags:["family","quick"],       note:"TJ General Tso sauce over rice with edamame on the side.",      needs:["chicken","general tso sauce","brown rice","edamame"] },
-  { id:"m8",  emoji:"🥗", name:"Greek Salad Plate",         tags:["vegetarian","light"],   note:"Feta + kalamata olives + tomatoes + cucumbers + lemon.",         needs:["tomatoes","cucumbers","feta","olives","lemons"] },
-  { id:"m9",  emoji:"🥑", name:"Avocado Egg Toast",         tags:["breakfast","quick"],    note:"Smashed avocado on pita with a soft egg on top.",                needs:["avocados","eggs","pita"] },
-  { id:"m10", emoji:"🍝", name:"Chickpea Pasta Primavera",  tags:["vegetarian","healthy"], note:"Chickpea pasta + sautéed zucchini + tomato sauce.",              needs:["chickpea pasta","zucchini","tomato sauce"] },
-  { id:"m11", emoji:"🌽", name:"Full Veggie Grill Night",   tags:["grill","vegetarian"],   note:"Corn, zucchini, peppers, asparagus — whole spread on the grill.",needs:["corn","zucchini","peppers","asparagus"] },
-  { id:"m12", emoji:"🐟", name:"Salmon & Asparagus",        tags:["grill","Jake"],         note:"WF salmon + TJ asparagus + lemon — Jake's go-to.",              needs:["salmon","asparagus","lemons"] },
-  { id:"m13", emoji:"🍳", name:"Egg Scramble Bowls",        tags:["breakfast","quick"],    note:"Eggs + spinach + Mexican cheese — ready in 10 minutes.",         needs:["eggs","spinach","mexican cheese"] },
-  { id:"m14", emoji:"🥣", name:"Sweet Potato & Kale Bowl",  tags:["vegetarian","healthy"], note:"Roasted sweet potato + massaged kale + crumbled feta.",          needs:["sweet potato","kale","feta"] },
-  { id:"m15", emoji:"🍕", name:"Banza Pizza Night",         tags:["family","kids"],        note:"Top WF Banza with extra parmesan + whatever's in the fridge.",   needs:["banza pizza","parmesan"] },
-  { id:"m16", emoji:"🥘", name:"Pearl Couscous Veggie Bowl",tags:["vegetarian","family"],  note:"Large pearl couscous + roasted veg + feta — great for Chelsea.", needs:["couscous","zucchini","tomatoes","feta"] },
-  { id:"m17", emoji:"🌮", name:"Skirt Steak Tacos",         tags:["grill","family"],       note:"Slice Rachel's grilled skirt steak into almond flour tortillas + avo.", needs:["skirt steak","tortilla","avocados"] },
-  { id:"m18", emoji:"🍗", name:"Chicken Nugget Platter",    tags:["kids","quick"],         note:"Chelsea-approved — nuggets + carrot sticks + ketchup dipping.",  needs:["chicken nuggets","ketchup","carrots"] },
-  { id:"m19", emoji:"🥦", name:"Stir-Fry Veggie Bowl",      tags:["vegetarian","quick"],   note:"Peppers + baby corn + edamame + teriyaki over rice.",            needs:["peppers","baby corn","edamame","teriyaki sauce","brown rice"] },
-  { id:"m20", emoji:"🫙", name:"Greek Yogurt Bowls",        tags:["breakfast","kids"],     note:"Plain Greek yogurt + frozen berries (thawed) + granola + honey.", needs:["greek yogurt","frozen berries","granola","honey"] },
+// ─── Constants ────────────────────────────────────────────────────────────────
+const DEFAULT_STORES = [
+  { id: "traderjoes", name: "Trader Joe's", emoji: "🌻", color: "#e63946" },
+  { id: "wholefoods", name: "Whole Foods", emoji: "🌿", color: "#2d6a4f" },
+  { id: "larocca", name: "LaRocca's Market", emoji: "🧺", color: "#e9832d" },
 ];
 
-const CAT_META = {
-  produce:    { emoji:"🥦", label:"Produce" },
-  meat:       { emoji:"🥩", label:"Meat" },
-  seafood:    { emoji:"🐟", label:"Seafood" },
-  dairy:      { emoji:"🧀", label:"Dairy" },
-  frozen:     { emoji:"🧊", label:"Frozen" },
-  pantry:     { emoji:"🥫", label:"Pantry" },
-  pasta:      { emoji:"🍝", label:"Pasta" },
-  grains:     { emoji:"🌾", label:"Grains" },
-  snacks:     { emoji:"🍿", label:"Snacks" },
-  beverages:  { emoji:"🥤", label:"Beverages" },
-  bakery:     { emoji:"🍞", label:"Bakery" },
-  baking:     { emoji:"🧁", label:"Baking" },
-  breakfast:  { emoji:"🥣", label:"Breakfast" },
-  other:      { emoji:"📦", label:"Other" },
+// ─── Pre-populated lists ──────────────────────────────────────────────────────
+function makeItem(name) {
+  return { id: name.toLowerCase().replace(/\s+/g, "_") + "_" + Math.random().toString(36).slice(2,7), name, qty: 1, checked: false, skipped: false };
+}
+
+const DEFAULT_LISTS = {
+  larocca: [
+    "Apples", "Chelsea fruit", "Dinner",
+  ].map(makeItem),
+
+  wholefoods: [
+    "Chicken fingers", "Banza pizza", "Dino nugs", "Fresh Parmesan", "Tea",
+    "Grill", "C fruit", "Greek yogurt", "Whole wheat pasta",
+    "Fluffy pita whole wheat", "Pesto", "Banana", "Chelsea yogurt",
+  ].map(makeItem),
+
+  traderjoes: [
+    // Fruits & Veggies
+    "Avocados (bag of minis)", "C fruit - Mixed fruit, straw", "Sweet potato",
+    "Blueberries", "Apples", "Tomatoes", "Bananas", "Edamame", "Kale",
+    "Mini cucumbers", "Peppers", "Big carrot", "Clementines or oranges",
+    "Asparagus", "Baby corn", "Rachel salad mix", "Lemons 2-3",
+    "Color carrots", "Zucchini", "Regular potato", "Corn", "Mandarin oranges",
+    "Strawberries", "Nectarines (unripe, hard)", "Romaine or bib lettuce prewashed",
+    "Broccoli", "Spinach", "Zigzag cut squash", "Onion", "Lime",
+    // Dairy / Fridge
+    "Eggs", "Mexican cheese", "Pumpkin ravioli", "Feta", "Baby bells x2",
+    "Fresh mozz balls", "Almond milk", "Greek yogurt x2", "Yogurt tubes",
+    "Chelsea fruit yogurt", "Orange juice", "Shredded mozz", "Pesto",
+    "Pizza dough x2", "Pizza sauce", "Chelsea string cheese", "Hummus",
+    "Cream cheese", "4 cheese rav", "Parm cheese", "Whipped cream", "Jake Smoothie",
+    // Frozen
+    "Frozen berries x2", "Falafel", "In shell edamame x2", "Turkey Meatballs",
+    "Check for lunches for Jake", "Cauli pizza x1",
+    "Butternut squash Mac and cheese x1", "Brown rice", "Cauli fried rice",
+    "Frozen wontons", "Chicken taquitos",
+    // Meat
+    "Chicken for dillas", "Organic Chicken nugs", "Protein for Wed/Thurs for Jake",
+    // Other
+    "Baking soda", "Pistachios light salt", "Whole wheat pasta", "Pretzels",
+    "Granola - purple bag, grainless granola", "Ketchup",
+    "Tortilla shells (4 pack almond flour)", "Kalamata olives", "Tomato sauce",
+    "Black olive can", "Peanut butter", "Dried mango", "Cashews no salt",
+    "PBJ bites", "Chelsea strawberry bars or other", "Strawberry chips",
+    "Apple chips", "Cashew travel packs", "Tea - chamomile", "Chickpea pasta x2",
+    "Chelsea blueberry bars", "Avocado oil spray", "Peanuts light salt",
+    "Light salt cashews", "Cheerios", "Travel nut packs", "Banana chips",
+    "Rachel bars", "Regular flour dillas", "Cheese sandwich crackers",
+    "Colored pasta x2", "Plain pasta", "Couscous (large pearls)", "Honey",
+    "Bamba", "Pickles refrigerator", "Mac and cheese (shells white cheddar)",
+    "Teriyaki sauce", "Saltines / oyster crackers", "General Tso sauce",
+    "Cheddar rockets", "Peapod chips", "Applesauce pouches", "Pita",
+    "Jake bars", "Seltzer bottles",
+  ].map(makeItem),
 };
-const CAT_ORDER = ["produce","meat","seafood","dairy","frozen","pasta","grains","pantry","snacks","beverages","bakery","baking","breakfast","other"];
 
-// ─── Storage (localStorage) ───────────────────────────────────────────────────
-const SK = "grocery_lists_v1";
-const HK = "grocery_history_v1";
-const MK = "grocery_meals_v1";
+const CATEGORY_MAP = {
+  produce: ["apple","banana","lettuce","spinach","kale","tomato","onion","garlic","lemon","lime","avocado","broccoli","carrot","celery","pepper","cucumber","zucchini","mushroom","potato","sweet potato","ginger","herbs","basil","cilantro","parsley","arugula","beet","radish","scallion","grape","berry","strawberry","blueberry","raspberry","mango","peach","plum","melon","pear","orange","grapefruit","clementine","mandarin","asparagus","corn","squash","nectarine","romaine","romain","edamame","color carrot","zigzag","baby corn","salad mix"],
+  dairy: ["milk","cheese","yogurt","butter","cream","egg","eggs","kefir","cottage","ricotta","mozzarella","mozz","parmesan","parm","cheddar","brie","feta","almond milk","string cheese","cream cheese","baby bell","hummus","whipped"],
+  meat: ["chicken","beef","pork","turkey","lamb","salmon","tuna","shrimp","fish","sausage","bacon","ham","steak","ground","nugs","taquito","meatball","protein","dilla"],
+  bakery: ["bread","bagel","muffin","croissant","baguette","roll","pita","tortilla","naan","sourdough","dough"],
+  pantry: ["pasta","rice","quinoa","oat","cereal","flour","sugar","salt","oil","vinegar","sauce","broth","stock","canned","bean","lentil","chickpea","soup","tomato sauce","coconut milk","honey","maple","jam","peanut","almond","nut","seed","spice","herb","dried","olive","ketchup","teriyaki","general tso","couscous","cracker","saltine","oyster cracker","baking soda","cheerio","granola","pretzel","chip","pita","applesauce","cashew","pistachio","peanut butter","bamba","pb","bar","pbj","mango"],
+  frozen: ["frozen","ice cream","pizza","edamame","peas","waffle","falafel","brown rice","fried rice","wonton","ravioli","rav","mac and cheese","cauli","butternut","smoothie"],
+  beverages: ["water","juice","coffee","tea","wine","beer","soda","sparkling","kombucha","drink","oat milk","orange juice","seltzer","camomile","chamomile"],
+  snacks: ["chip","cracker","cookie","bar","popcorn","pretzel","granola","chocolate","candy","dried fruit","trail mix","pita","applesauce","bamba","banana chip","strawberry chip","apple chip","peapod","cheddar rocket","travel pack","sandwich cracker"],
+  household: ["paper towel","toilet paper","dish","soap","detergent","cleaner","trash","bag","wrap","foil","sponge","tissue","spray"],
+  personal: ["shampoo","conditioner","lotion","toothpaste","deodorant","razor","vitamin","supplement"],
+};
 
-function lsGet(key, fallback) {
-  try {
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
-  } catch { return fallback; }
+const EMOJI_OPTIONS = ["🛒","🍎","🥦","🧀","🥩","🍞","🧊","☕","🍫","🏠","🌿","🌻","🧺","🛍️","🥗","🍳","🥐","🍋","🧄","🫑"];
+const COLOR_OPTIONS = ["#e63946","#2d6a4f","#e9832d","#3a86ff","#8338ec","#ff006e","#06d6a0","#ffd166","#ef476f","#118ab2","#073b4c","#b5838d"];
+
+const MEAL_SUGGESTIONS = [
+  { name: "Sheet Pan Chicken & Veggies", ingredients: ["chicken","broccoli","carrot","olive oil","garlic","lemon"] },
+  { name: "Pasta Primavera", ingredients: ["pasta","zucchini","tomato","pepper","parmesan","basil"] },
+  { name: "Black Bean Tacos", ingredients: ["tortilla","black bean","avocado","cheese","cilantro","lime"] },
+  { name: "Salmon & Quinoa Bowl", ingredients: ["salmon","quinoa","spinach","lemon","olive oil","garlic"] },
+  { name: "Stir-Fry Noodles", ingredients: ["noodles","broccoli","carrot","soy sauce","ginger","sesame oil"] },
+  { name: "Greek Salad", ingredients: ["cucumber","tomato","feta","olive","red onion","olive oil"] },
+  { name: "Veggie Frittata", ingredients: ["eggs","spinach","mushroom","onion","cheese","pepper"] },
+  { name: "Chicken Soup", ingredients: ["chicken","carrot","celery","onion","garlic","broth","noodles"] },
+  { name: "Avocado Toast", ingredients: ["sourdough","avocado","lemon","salt","egg","chili flakes"] },
+  { name: "Lentil Dal", ingredients: ["lentil","tomato","onion","garlic","ginger","coconut milk","spice"] },
+  { name: "Beef Stir-Fry", ingredients: ["beef","broccoli","soy sauce","garlic","ginger","rice"] },
+  { name: "Caprese Salad", ingredients: ["tomato","mozzarella","basil","olive oil","balsamic"] },
+  { name: "Turkey Meatballs", ingredients: ["turkey","egg","breadcrumbs","garlic","parsley","tomato sauce","pasta"] },
+  { name: "Smoothie Bowl", ingredients: ["banana","berry","yogurt","granola","honey","almond milk"] },
+  { name: "Grilled Cheese Soup", ingredients: ["bread","cheddar","butter","tomato soup","onion"] },
+  { name: "Buddha Bowl", ingredients: ["quinoa","chickpea","avocado","kale","carrot","tahini","lemon"] },
+  { name: "Shrimp Tacos", ingredients: ["shrimp","tortilla","cabbage","lime","cilantro","avocado"] },
+  { name: "Oatmeal Breakfast", ingredients: ["oat","banana","almond milk","honey","berry","nut"] },
+  { name: "Veggie Burger", ingredients: ["black bean","onion","garlic","egg","breadcrumbs","cheese","bun"] },
+  { name: "Pesto Pasta", ingredients: ["pasta","basil","parmesan","pine nut","garlic","olive oil"] },
+];
+
+function categorize(itemName) {
+  const lower = itemName.toLowerCase();
+  for (const [cat, keywords] of Object.entries(CATEGORY_MAP)) {
+    if (keywords.some((kw) => lower.includes(kw))) return cat;
+  }
+  return "other";
 }
-function lsSet(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+
+function groupByCategory(items) {
+  const groups = {};
+  for (const item of items) {
+    const cat = categorize(item.name);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(item);
+  }
+  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
 }
 
-// ─── Meal Matching ────────────────────────────────────────────────────────────
-function matchScore(meal, allItems) {
-  const names = allItems.map(i => i.name.toLowerCase());
-  const hits = meal.needs.filter(n => names.some(nm => nm.includes(n.toLowerCase())));
-  return hits.length / meal.needs.length;
+// ─── Swipe hook ───────────────────────────────────────────────────────────────
+function useSwipe(onSwipeLeft) {
+  const startX = useRef(null);
+  return {
+    onTouchStart: (e) => { startX.current = e.touches[0].clientX; },
+    onTouchEnd: (e) => {
+      if (startX.current === null) return;
+      const diff = startX.current - e.changedTouches[0].clientX;
+      if (diff > 60) onSwipeLeft();
+      startX.current = null;
+    },
+  };
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ─── Default state ────────────────────────────────────────────────────────────
+function makeDefaultState() {
+  return {
+    stores: DEFAULT_STORES,
+    lists: DEFAULT_LISTS,
+    mealFeedback: {},
+    insights: [],
+  };
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [activeStore, setActiveStore] = useState("tj");
-  const [lists, setLists] = useState(() => lsGet(SK, DEFAULTS));
-  const [history, setHistory] = useState(() => lsGet(HK, {}));
-  const [mealFeedback, setMealFeedback] = useState(() => lsGet(MK, {}));
-  const [view, setView] = useState("list");
-  const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name:"", qty:1, unit:"", cat:"other" });
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [search, setSearch] = useState("");
-  const [swipe, setSwipe] = useState({ id:null, delta:0 });
-  const touchX = useRef(null);
-  const searchRef = useRef(null);
+  const [state, setState] = useState(makeDefaultState);
+  const [activeTab, setActiveTab] = useState("store");
+  const [activeStoreId, setActiveStoreId] = useState("traderjoes");
+  const [newItemText, setNewItemText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showNewWeekModal, setShowNewWeekModal] = useState(false);
+  const [showAddStoreModal, setShowAddStoreModal] = useState(false);
+  const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(null);
+  const [newStoreName, setNewStoreName] = useState("");
+  const [newStoreEmoji, setNewStoreEmoji] = useState("🛒");
+  const [newStoreColor, setNewStoreColor] = useState("#3a86ff");
+  const [showSkipped, setShowSkipped] = useState(false);
 
-  // Persist on every change
-  useEffect(() => { lsSet(SK, lists); }, [lists]);
-  useEffect(() => { lsSet(HK, history); }, [history]);
-  useEffect(() => { lsSet(MK, mealFeedback); }, [mealFeedback]);
+  const { stores, lists, mealFeedback, insights } = state;
 
-  const S = STORES[activeStore];
-  const items = lists[activeStore] || [];
-  const allItems = Object.values(lists).flat();
-
-  const toggle = useCallback((id) => {
-    const item = items.find(i => i.id === id);
-    const wasChecked = item?.checked;
-    setLists(p => ({ ...p, [activeStore]: p[activeStore].map(i => i.id === id ? {...i, checked: !i.checked} : i) }));
-    if (item && !wasChecked) {
-      setHistory(p => {
-        const key = item.name.toLowerCase();
-        return { ...p, [key]: { name: item.name, count: (p[key]?.count||0)+1, lastQty: item.qty, store: activeStore } };
-      });
+  // ── localStorage persistence ────────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("groceryState");
+      if (saved) setState(JSON.parse(saved));
+    } catch (e) {
+      console.warn("Could not load saved state", e);
     }
-  }, [items, activeStore]);
+  }, []);
 
-  const adjustQty = (id, d) =>
-    setLists(p => ({ ...p, [activeStore]: p[activeStore].map(i => i.id === id ? {...i, qty: Math.max(0.25, +(i.qty+d).toFixed(2))} : i) }));
+  function persist(newState) {
+    setState(newState);
+    try {
+      localStorage.setItem("groceryState", JSON.stringify(newState));
+    } catch (e) {
+      console.warn("Could not save state", e);
+    }
+  }
 
-  const removeItem = (id) =>
-    setLists(p => ({ ...p, [activeStore]: p[activeStore].filter(i => i.id !== id) }));
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const activeStore = stores.find((s) => s.id === activeStoreId) || stores[0];
+  const activeList = lists[activeStoreId] || [];
 
-  const addItem = () => {
-    if (!form.name.trim()) return;
-    const item = { id:`${activeStore}${Date.now()}`, name: form.name.trim(), qty: +form.qty||1, unit: form.unit.trim(), cat: form.cat, checked: false };
-    setLists(p => ({ ...p, [activeStore]: [...p[activeStore], item] }));
-    setForm({ name:"", qty:1, unit:"", cat:"other" });
-    setAdding(false);
+  function addItem() {
+    const trimmed = newItemText.trim();
+    if (!trimmed) return;
+    const newItem = {
+      id: Date.now().toString(),
+      name: trimmed,
+      qty: 1,
+      checked: false,
+      skipped: false,
+    };
+    const newLists = {
+      ...lists,
+      [activeStoreId]: [...activeList, newItem],
+    };
+    persist({ ...state, lists: newLists });
+    setNewItemText("");
+  }
+
+  function toggleItem(itemId) {
+    const updated = activeList.map((item) =>
+      item.id === itemId ? { ...item, checked: !item.checked } : item
+    );
+    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+  }
+
+  function toggleSkip(itemId) {
+    const updated = activeList.map((item) =>
+      item.id === itemId ? { ...item, skipped: !item.skipped, checked: false } : item
+    );
+    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+  }
+
+  function deleteItem(itemId) {
+    const updated = activeList.filter((item) => item.id !== itemId);
+    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+  }
+
+  function changeQty(itemId, delta) {
+    const updated = activeList.map((item) =>
+      item.id === itemId
+        ? { ...item, qty: Math.max(1, (item.qty || 1) + delta) }
+        : item
+    );
+    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+  }
+
+  function handleNewWeek() {
+    const newInsights = [...(insights || [])];
+    for (const store of stores) {
+      for (const item of lists[store.id] || []) {
+        if (item.checked) {
+          newInsights.push({ name: item.name, store: store.name, date: new Date().toISOString() });
+        }
+      }
+    }
+    const resetLists = {};
+    for (const store of stores) {
+      resetLists[store.id] = (lists[store.id] || []).map((item) => ({
+        ...item,
+        checked: false,
+        skipped: false,
+      }));
+    }
+    persist({ ...state, lists: resetLists, insights: newInsights });
+    setShowNewWeekModal(false);
+  }
+
+  function addStore() {
+    if (!newStoreName.trim()) return;
+    const id = newStoreName.toLowerCase().replace(/\s+/g, "_") + "_" + Date.now();
+    const newStore = { id, name: newStoreName.trim(), emoji: newStoreEmoji, color: newStoreColor };
+    const newStores = [...stores, newStore];
+    const newLists = { ...lists, [id]: [] };
+    persist({ ...state, stores: newStores, lists: newLists });
+    setNewStoreName("");
+    setNewStoreEmoji("🛒");
+    setNewStoreColor("#3a86ff");
+    setShowAddStoreModal(false);
+    setActiveStoreId(id);
+  }
+
+  function deleteStore(storeId) {
+    const newStores = stores.filter((s) => s.id !== storeId);
+    const newLists = { ...lists };
+    delete newLists[storeId];
+    const nextId = newStores[0]?.id || null;
+    persist({ ...state, stores: newStores, lists: newLists });
+    if (activeStoreId === storeId) setActiveStoreId(nextId);
+    setShowDeleteStoreModal(null);
+  }
+
+  function rateMeal(mealName, rating) {
+    const newFeedback = { ...mealFeedback, [mealName]: rating };
+    persist({ ...state, mealFeedback: newFeedback });
+  }
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+  const visibleItems = showSkipped
+    ? activeList.filter((i) => i.skipped)
+    : activeList.filter((i) => !i.skipped);
+
+  const skippedCount = activeList.filter((i) => i.skipped).length;
+
+  const allItems = stores.flatMap((s) =>
+    (lists[s.id] || []).map((item) => ({ ...item, storeName: s.name, storeId: s.id }))
+  );
+
+  const searchResults = searchQuery.length > 1
+    ? allItems.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
+  const scoredMeals = MEAL_SUGGESTIONS.map((meal) => {
+    const allNames = allItems.map((i) => i.name.toLowerCase());
+    const matches = meal.ingredients.filter((ing) =>
+      allNames.some((n) => n.includes(ing))
+    ).length;
+    return { ...meal, score: matches };
+  }).sort((a, b) => b.score - a.score);
+
+  const insightCounts = {};
+  for (const entry of insights || []) {
+    insightCounts[entry.name] = (insightCounts[entry.name] || 0) + 1;
+  }
+  const topInsights = Object.entries(insightCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10);
+
+  // ── Styles ───────────────────────────────────────────────────────────────────
+  const styles = {
+    app: {
+      fontFamily: "'Nunito', sans-serif",
+      maxWidth: 480,
+      margin: "0 auto",
+      minHeight: "100dvh",
+      backgroundColor: "#f8f5f0",
+      display: "flex",
+      flexDirection: "column",
+      position: "relative",
+    },
+    header: {
+      padding: "16px 16px 8px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderBottom: "1px solid #e8e2da",
+      background: "#fff",
+      position: "sticky",
+      top: 0,
+      zIndex: 50,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: 800,
+      color: "#1a1a1a",
+      letterSpacing: "-0.3px",
+    },
+    newWeekBtn: {
+      fontSize: 12,
+      fontWeight: 700,
+      padding: "6px 12px",
+      borderRadius: 20,
+      border: "none",
+      background: "#1a1a1a",
+      color: "#fff",
+      cursor: "pointer",
+    },
+    storeTabs: {
+      display: "flex",
+      gap: 6,
+      padding: "10px 12px 4px",
+      overflowX: "auto",
+      background: "#fff",
+      borderBottom: "1px solid #e8e2da",
+      scrollbarWidth: "none",
+    },
+    storeTab: (store, active) => ({
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      padding: "6px 12px",
+      borderRadius: 20,
+      border: `2px solid ${active ? store.color : "#e0dbd3"}`,
+      background: active ? store.color : "#fff",
+      color: active ? "#fff" : "#555",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      transition: "all 0.15s",
+      flexShrink: 0,
+    }),
+    addStoreTab: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "6px 10px",
+      borderRadius: 20,
+      border: "2px dashed #ccc",
+      background: "transparent",
+      color: "#999",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      flexShrink: 0,
+    },
+    content: {
+      flex: 1,
+      overflowY: "auto",
+      padding: "12px 12px 80px",
+    },
+    storeHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    storeName: {
+      fontSize: 20,
+      fontWeight: 800,
+      color: "#1a1a1a",
+    },
+    deleteStoreBtn: {
+      fontSize: 11,
+      color: "#e63946",
+      background: "none",
+      border: "1px solid #e63946",
+      borderRadius: 12,
+      padding: "3px 9px",
+      cursor: "pointer",
+      fontWeight: 700,
+    },
+    addItemRow: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 12,
+    },
+    input: {
+      flex: 1,
+      padding: "10px 14px",
+      borderRadius: 12,
+      border: "1.5px solid #e0dbd3",
+      fontSize: 15,
+      background: "#fff",
+      outline: "none",
+      fontFamily: "'Nunito', sans-serif",
+    },
+    addBtn: (color) => ({
+      padding: "10px 16px",
+      borderRadius: 12,
+      border: "none",
+      background: color,
+      color: "#fff",
+      fontWeight: 800,
+      fontSize: 16,
+      cursor: "pointer",
+    }),
+    skippedToggle: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 10,
+      cursor: "pointer",
+    },
+    skippedToggleText: {
+      fontSize: 13,
+      color: "#888",
+      fontWeight: 700,
+    },
+    skippedBadge: {
+      background: "#f0ebe4",
+      color: "#888",
+      borderRadius: 10,
+      padding: "1px 7px",
+      fontSize: 11,
+      fontWeight: 800,
+    },
+    categoryLabel: {
+      fontSize: 10,
+      fontWeight: 800,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      color: "#aaa",
+      marginTop: 16,
+      marginBottom: 6,
+      paddingLeft: 4,
+    },
+    itemRow: (checked, skipped) => ({
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 12px",
+      borderRadius: 12,
+      background: skipped ? "#f5f5f5" : "#fff",
+      marginBottom: 6,
+      border: skipped ? "1.5px dashed #ddd" : "1.5px solid #ede8e1",
+      opacity: skipped ? 0.6 : 1,
+      transition: "opacity 0.2s",
+    }),
+    checkbox: (checked, color) => ({
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      border: checked ? "none" : `2px solid ${color}`,
+      background: checked ? color : "transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      flexShrink: 0,
+      transition: "all 0.15s",
+    }),
+    itemName: (checked, skipped) => ({
+      flex: 1,
+      fontSize: 15,
+      fontWeight: 600,
+      color: checked || skipped ? "#bbb" : "#1a1a1a",
+      textDecoration: checked ? "line-through" : "none",
+      fontStyle: skipped ? "italic" : "normal",
+    }),
+    qtyRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4,
+    },
+    qtyBtn: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      border: "1.5px solid #e0dbd3",
+      background: "#f8f5f0",
+      cursor: "pointer",
+      fontSize: 14,
+      fontWeight: 800,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#555",
+    },
+    qtyNum: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: "#555",
+      minWidth: 16,
+      textAlign: "center",
+    },
+    skipBtn: (skipped) => ({
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      fontSize: 16,
+      opacity: skipped ? 1 : 0.35,
+      padding: "0 2px",
+    }),
+    deleteBtn: {
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      fontSize: 16,
+      color: "#e63946",
+      padding: "0 2px",
+      opacity: 0.5,
+    },
+    bottomNav: {
+      position: "fixed",
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "100%",
+      maxWidth: 480,
+      display: "flex",
+      background: "#fff",
+      borderTop: "1px solid #e8e2da",
+      zIndex: 100,
+    },
+    navBtn: (active) => ({
+      flex: 1,
+      padding: "10px 4px 14px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 3,
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      fontSize: 10,
+      fontWeight: 800,
+      color: active ? "#1a1a1a" : "#bbb",
+      fontFamily: "'Nunito', sans-serif",
+      letterSpacing: 0.3,
+    }),
+    modal: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      zIndex: 200,
+    },
+    modalBox: {
+      background: "#fff",
+      borderRadius: "20px 20px 0 0",
+      padding: "24px 20px 36px",
+      width: "100%",
+      maxWidth: 480,
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontWeight: 800,
+      marginBottom: 14,
+      color: "#1a1a1a",
+    },
+    modalBtnRow: {
+      display: "flex",
+      gap: 10,
+      marginTop: 18,
+    },
+    cancelBtn: {
+      flex: 1,
+      padding: 12,
+      borderRadius: 12,
+      border: "1.5px solid #e0dbd3",
+      background: "#fff",
+      fontWeight: 700,
+      fontSize: 15,
+      cursor: "pointer",
+      fontFamily: "'Nunito', sans-serif",
+    },
+    confirmBtn: (color = "#1a1a1a") => ({
+      flex: 1,
+      padding: 12,
+      borderRadius: 12,
+      border: "none",
+      background: color,
+      color: "#fff",
+      fontWeight: 800,
+      fontSize: 15,
+      cursor: "pointer",
+      fontFamily: "'Nunito', sans-serif",
+    }),
+    emojiGrid: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    emojiOption: (selected) => ({
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      border: selected ? "2.5px solid #1a1a1a" : "1.5px solid #e0dbd3",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      cursor: "pointer",
+      background: selected ? "#f0ebe4" : "#fff",
+    }),
+    colorGrid: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 16,
+    },
+    colorSwatch: (color, selected) => ({
+      width: 28,
+      height: 28,
+      borderRadius: "50%",
+      background: color,
+      cursor: "pointer",
+      border: selected ? "3px solid #1a1a1a" : "2px solid transparent",
+      outline: selected ? "2px solid #fff" : "none",
+      outlineOffset: -4,
+    }),
   };
-
-  const reset = () => setLists(p => ({ ...p, [activeStore]: p[activeStore].map(i => ({...i, checked:false})) }));
-  const clearDone = () => setLists(p => ({ ...p, [activeStore]: p[activeStore].filter(i => !i.checked) }));
-  const resetAll = () => {
-    setLists(p => Object.fromEntries(Object.entries(p).map(([k, its]) => [k, its.map(i => ({...i, checked:false}))])));
-    setConfirmReset(false);
-  };
-
-  const rateMeal = (id, val) => setMealFeedback(p => ({...p, [id]: val}));
-
-  // Swipe handlers
-  const ts = (e, id) => { touchX.current = e.touches[0].clientX; setSwipe({ id, delta:0 }); };
-  const tm = (e, id) => {
-    if (swipe.id !== id) return;
-    setSwipe({ id, delta: Math.max(-110, Math.min(0, e.touches[0].clientX - touchX.current)) });
-  };
-  const te = (id) => { if (swipe.delta < -80) removeItem(id); setSwipe({ id:null, delta:0 }); };
-
-  // Derived data
-  const unchecked = items.filter(i => !i.checked);
-  const checked   = items.filter(i => i.checked);
-  const grouped   = {};
-  unchecked.forEach(i => { const c = i.cat||"other"; if (!grouped[c]) grouped[c]=[]; grouped[c].push(i); });
-  Object.keys(grouped).forEach(c => grouped[c].sort((a,b) => a.name.localeCompare(b.name)));
-
-  const searchQuery = search.trim().toLowerCase();
-  const searchResults = searchQuery.length < 1 ? [] :
-    Object.entries(lists).flatMap(([storeKey, storeItems]) =>
-      storeItems.filter(i => i.name.toLowerCase().includes(searchQuery)).map(i => ({...i, storeKey}))
-    ).sort((a,b) => a.name.localeCompare(b.name));
-
-  const scoredMeals = ALL_MEALS
-    .map(m => { const fb = mealFeedback[m.id]??0; const match = matchScore(m, allItems); return {...m, fb, match, score: match*2 + fb*0.6}; })
-    .filter(m => m.fb > -1 && m.match > 0)
-    .sort((a,b) => b.score - a.score);
-
-  const likedMeals  = ALL_MEALS.filter(m => mealFeedback[m.id] === 1);
-  const topHistory  = Object.values(history).sort((a,b) => b.count - a.count).slice(0, 10);
 
   return (
-    <div style={{ fontFamily:"'Georgia',serif", background:"#f7f7f4", minHeight:"100vh", maxWidth:480, margin:"0 auto", paddingBottom:100 }}>
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
 
-      {/* ── Header ── */}
-      <div style={{ background:S.color, color:"#fff", position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 18px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding:"16px 18px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <div style={{ fontSize:10, letterSpacing:3, textTransform:"uppercase", opacity:0.6, fontFamily:"sans-serif" }}>Weekly Shop</div>
-            <div style={{ fontSize:22, fontWeight:700, marginTop:1 }}>{S.emoji} {S.name}</div>
-          </div>
-          <div style={{ background:"rgba(255,255,255,0.18)", borderRadius:20, padding:"5px 14px", fontSize:13, fontFamily:"sans-serif" }}>
-            {unchecked.length} left · {checked.length} ✓
-          </div>
+      <div style={styles.app}>
+        <div style={styles.header}>
+          <span style={styles.headerTitle}>🛒 Groceries</span>
+          <button style={styles.newWeekBtn} onClick={() => setShowNewWeekModal(true)}>
+            New Week
+          </button>
         </div>
-        <div style={{ display:"flex", gap:2, padding:"10px 18px 0" }}>
-          {Object.entries(STORES).map(([k,s]) => (
-            <button key={k} onClick={() => setActiveStore(k)} style={{
-              flex:1, background: activeStore===k ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.17)",
-              color: activeStore===k ? s.color : "#fff", border:"none", borderRadius:"8px 8px 0 0",
-              padding:"7px 2px", fontSize:12, fontFamily:"sans-serif", fontWeight:700, cursor:"pointer"
-            }}>{s.emoji} {s.short}</button>
+
+        {activeTab === "store" && (
+          <div style={styles.storeTabs}>
+            {stores.map((store) => (
+              <button
+                key={store.id}
+                style={styles.storeTab(store, activeStoreId === store.id)}
+                onClick={() => setActiveStoreId(store.id)}
+              >
+                {store.emoji} {store.name}
+              </button>
+            ))}
+            <button style={styles.addStoreTab} onClick={() => setShowAddStoreModal(true)}>
+              + Store
+            </button>
+          </div>
+        )}
+
+        <div style={styles.content}>
+          {activeTab === "store" && (
+            <>
+              <div style={styles.storeHeader}>
+                <span style={styles.storeName}>
+                  {activeStore?.emoji} {activeStore?.name}
+                </span>
+                {!DEFAULT_STORES.find((s) => s.id === activeStoreId) && (
+                  <button style={styles.deleteStoreBtn} onClick={() => setShowDeleteStoreModal(activeStoreId)}>
+                    Remove Store
+                  </button>
+                )}
+              </div>
+
+              <div style={styles.addItemRow}>
+                <input
+                  style={styles.input}
+                  placeholder="Add item…"
+                  value={newItemText}
+                  onChange={(e) => setNewItemText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addItem()}
+                />
+                <button style={styles.addBtn(activeStore?.color || "#333")} onClick={addItem}>+</button>
+              </div>
+
+              {skippedCount > 0 && (
+                <div style={styles.skippedToggle} onClick={() => setShowSkipped((v) => !v)}>
+                  <span style={{ fontSize: 14 }}>{showSkipped ? "▾" : "▸"}</span>
+                  <span style={styles.skippedToggleText}>
+                    {showSkipped ? "Hide skipped" : "Show skipped this week"}
+                  </span>
+                  <span style={styles.skippedBadge}>{skippedCount}</span>
+                </div>
+              )}
+
+              {visibleItems.length === 0 && (
+                <div style={{ textAlign: "center", color: "#bbb", marginTop: 40, fontSize: 14 }}>
+                  {showSkipped ? "No skipped items." : "List is empty — add something!"}
+                </div>
+              )}
+
+              {groupByCategory(visibleItems).map(([cat, items]) => (
+                <div key={cat}>
+                  <div style={styles.categoryLabel}>{cat}</div>
+                  {items.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      storeColor={activeStore?.color}
+                      styles={styles}
+                      onToggle={() => toggleItem(item.id)}
+                      onToggleSkip={() => toggleSkip(item.id)}
+                      onDelete={() => deleteItem(item.id)}
+                      onQty={(d) => changeQty(item.id, d)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {activeTab === "search" && (
+            <>
+              <input
+                style={{ ...styles.input, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
+                placeholder="Search all stores…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              {searchResults.length === 0 && searchQuery.length > 1 && (
+                <div style={{ textAlign: "center", color: "#bbb", marginTop: 32 }}>No results found.</div>
+              )}
+              {searchResults.map((item) => {
+                const store = stores.find((s) => s.id === item.storeId);
+                return (
+                  <div key={item.id + item.storeId} style={{ ...styles.itemRow(item.checked, item.skipped), flexDirection: "column", alignItems: "flex-start" }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{item.name}</div>
+                    <div style={{ fontSize: 12, color: store?.color || "#888", fontWeight: 700, marginTop: 2 }}>
+                      {store?.emoji} {store?.name}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {activeTab === "meals" && (
+            <>
+              <div style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>
+                Scored by how many ingredients you already have on your lists.
+              </div>
+              {scoredMeals.map((meal) => (
+                <div key={meal.name} style={{ background: "#fff", borderRadius: 14, padding: "12px 14px", marginBottom: 8, border: "1.5px solid #ede8e1" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>{meal.name}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => rateMeal(meal.name, mealFeedback[meal.name] === "up" ? null : "up")}
+                        style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", opacity: mealFeedback[meal.name] === "up" ? 1 : 0.3 }}>👍</button>
+                      <button onClick={() => rateMeal(meal.name, mealFeedback[meal.name] === "down" ? null : "down")}
+                        style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", opacity: mealFeedback[meal.name] === "down" ? 1 : 0.3 }}>👎</button>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {meal.ingredients.map((ing) => {
+                      const have = allItems.some((i) => i.name.toLowerCase().includes(ing));
+                      return (
+                        <span key={ing} style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: have ? "#d8f3dc" : "#f0ebe4", color: have ? "#2d6a4f" : "#aaa" }}>
+                          {ing}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#aaa", fontWeight: 700 }}>
+                    {meal.score}/{meal.ingredients.length} ingredients on your list
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {activeTab === "insights" && (
+            <>
+              <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>
+                Your most-purchased items across all stores.
+              </div>
+              {topInsights.length === 0 && (
+                <div style={{ textAlign: "center", color: "#bbb", marginTop: 40 }}>
+                  Complete a week to see insights!
+                </div>
+              )}
+              {topInsights.map(([name, count], i) => (
+                <div key={name} style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", padding: "12px 14px", borderRadius: 12, marginBottom: 8, border: "1.5px solid #ede8e1" }}>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: "#e0dbd3", width: 28 }}>#{i + 1}</span>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 15 }}>{name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "#888" }}>{count}×</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div style={styles.bottomNav}>
+          {[
+            { id: "store", icon: "🏪", label: "Lists" },
+            { id: "search", icon: "🔍", label: "Search" },
+            { id: "meals", icon: "🍽️", label: "Meals" },
+            { id: "insights", icon: "📊", label: "Insights" },
+          ].map((tab) => (
+            <button key={tab.id} style={styles.navBtn(activeTab === tab.id)} onClick={() => setActiveTab(tab.id)}>
+              <span style={{ fontSize: 22 }}>{tab.icon}</span>
+              {tab.label}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* ── Sub-nav ── */}
-      <div style={{ background:"#fff", borderBottom:"1px solid #eee", display:"flex", alignItems:"center", padding:"0 12px" }}>
-        {[["list","📋 List"],["insights","📊 Insights"],["meals","🍽 Meals"]].map(([v,l]) => (
-          <button key={v} onClick={() => setView(v)} style={{
-            background:"none", border:"none", padding:"11px 12px", fontSize:13,
-            fontFamily:"sans-serif", fontWeight:600,
-            color: view===v ? S.color : "#bbb",
-            borderBottom: view===v ? `2.5px solid ${S.color}` : "2.5px solid transparent",
-            cursor:"pointer"
-          }}>{l}</button>
-        ))}
-        <div style={{ flex:1 }} />
-        {view==="list" && <>
-          <button onClick={reset} style={{ background:"none", border:"none", padding:"0 8px", fontSize:13, color:"#ccc", cursor:"pointer" }} title="Uncheck this store">↺</button>
-          {checked.length > 0 && <button onClick={clearDone} style={{ background:"none", border:"none", padding:"0 8px", fontSize:13, color:"#e55", cursor:"pointer" }} title="Remove checked">🗑</button>}
-          <button onClick={() => setConfirmReset(true)} style={{
-            background:S.color, color:"#fff", border:"none", borderRadius:20,
-            padding:"5px 13px", fontSize:12, fontFamily:"sans-serif", fontWeight:700,
-            cursor:"pointer", marginLeft:4
-          }}>New Week ✨</button>
-        </>}
-      </div>
-
-      {/* ── Search Bar ── */}
-      {view === "list" && (
-        <div style={{ background:"#fff", padding:"10px 14px 12px", borderBottom:"1px solid #eee" }}>
-          <div style={{ display:"flex", alignItems:"center", background:"#f4f4f2", borderRadius:12, padding:"8px 12px", gap:8 }}>
-            <span style={{ fontSize:15, opacity:0.4 }}>🔍</span>
-            <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search all lists…"
-              style={{ flex:1, background:"none", border:"none", outline:"none", fontSize:15, fontFamily:"Georgia,serif", color:"#222" }} />
-            {search && <button onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#bbb", fontSize:18, cursor:"pointer", lineHeight:1, padding:0 }}>×</button>}
+      {showNewWeekModal && (
+        <div style={styles.modal} onClick={() => setShowNewWeekModal(false)}>
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalTitle}>Start a New Week?</div>
+            <p style={{ color: "#666", fontSize: 14, lineHeight: 1.5 }}>
+              All checked items will be logged to Insights. All items — including skipped ones — will reset back to active for the new week.
+            </p>
+            <div style={styles.modalBtnRow}>
+              <button style={styles.cancelBtn} onClick={() => setShowNewWeekModal(false)}>Cancel</button>
+              <button style={styles.confirmBtn()} onClick={handleNewWeek}>Reset Week</button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── List View ── */}
-      {view === "list" && (
-        <div>
-          {searchQuery.length > 0 ? (
-            <div>
-              <div style={{ padding:"10px 16px 4px", fontSize:10, letterSpacing:2.5, textTransform:"uppercase", color:"#bbb", fontFamily:"sans-serif" }}>
-                {searchResults.length === 0 ? "No matches" : `${searchResults.length} result${searchResults.length!==1?"s":""} across all stores`}
-              </div>
-              {searchResults.length === 0
-                ? <div style={{ padding:"24px 16px", color:"#ccc", fontFamily:"sans-serif", fontSize:14 }}>"{search}" isn't on any list yet.</div>
-                : searchResults.map(item => (
-                  <div key={item.id} style={{ display:"flex", alignItems:"center", padding:"11px 14px", background:"#fff", borderBottom:"1px solid #f3f3f3", gap:10 }}>
-                    <div style={{ width:26, height:26, borderRadius:"50%", background:STORES[item.storeKey]?.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontFamily:"sans-serif", fontWeight:700, flexShrink:0 }}>
-                      {STORES[item.storeKey]?.short}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:15.5, color: item.checked?"#ccc":"#1a1a1a", textDecoration: item.checked?"line-through":"none", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</div>
-                      <div style={{ fontSize:11, color:"#ccc", fontFamily:"sans-serif", marginTop:1 }}>{CAT_META[item.cat]?.emoji} {CAT_META[item.cat]?.label}{item.unit ? ` · ${item.unit}` : ""}</div>
-                    </div>
-                    <div style={{ fontSize:13, color: item.checked?"#4caf80":"#bbb", fontFamily:"sans-serif", fontWeight:600 }}>{item.checked ? "✓ in cart" : `qty ${item.qty}`}</div>
-                  </div>
-                ))
-              }
-            </div>
-          ) : (
-            <>
-              {CAT_ORDER.filter(c => grouped[c]).map(cat => (
-                <div key={cat}>
-                  <div style={{ padding:"10px 16px 2px", fontSize:10, letterSpacing:2.5, textTransform:"uppercase", color:"#bbb", fontFamily:"sans-serif", display:"flex", alignItems:"center", gap:5 }}>
-                    {CAT_META[cat]?.emoji} {CAT_META[cat]?.label}
-                  </div>
-                  {grouped[cat].map(item => (
-                    <ItemRow key={item.id} item={item} color={S.color}
-                      onToggle={() => toggle(item.id)} onAdjust={d => adjustQty(item.id,d)} onRemove={() => removeItem(item.id)}
-                      swipeActive={swipe.id===item.id} swipeDelta={swipe.delta}
-                      onTouchStart={e => ts(e,item.id)} onTouchMove={e => tm(e,item.id)} onTouchEnd={() => te(item.id)} />
-                  ))}
-                </div>
-              ))}
-              {checked.length > 0 && (
-                <div>
-                  <div style={{ padding:"10px 16px 2px", fontSize:10, letterSpacing:2.5, textTransform:"uppercase", color:"#bbb", fontFamily:"sans-serif" }}>✅ In Cart</div>
-                  {checked.map(item => (
-                    <ItemRow key={item.id} item={item} color={S.color}
-                      onToggle={() => toggle(item.id)} onAdjust={d => adjustQty(item.id,d)} onRemove={() => removeItem(item.id)}
-                      swipeActive={swipe.id===item.id} swipeDelta={swipe.delta}
-                      onTouchStart={e => ts(e,item.id)} onTouchMove={e => tm(e,item.id)} onTouchEnd={() => te(item.id)} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── Insights View ── */}
-      {view === "insights" && (
-        <div style={{ padding:16 }}>
-          <div style={{ background:"#fff", borderRadius:16, padding:20, marginBottom:14, boxShadow:"0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ fontSize:17, fontWeight:700, marginBottom:2 }}>📈 Most Purchased</div>
-            <div style={{ fontSize:12, color:"#aaa", fontFamily:"sans-serif", marginBottom:18 }}>Across all three stores — all time</div>
-            {topHistory.length === 0
-              ? <div style={{ color:"#ccc", fontSize:14, fontFamily:"sans-serif" }}>Check items off while shopping to build your history!</div>
-              : topHistory.map(item => (
-                <div key={item.name} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:13 }}>
-                  <div style={{ width:26, height:26, borderRadius:"50%", background:STORES[item.store]?.color||"#999", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontFamily:"sans-serif", fontWeight:700, flexShrink:0 }}>
-                    {STORES[item.store]?.short}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:15, marginBottom:3 }}>{item.name}</div>
-                    <div style={{ height:5, background:"#f0f0f0", borderRadius:4 }}>
-                      <div style={{ height:5, width:`${(item.count/(topHistory[0]?.count||1))*100}%`, background:STORES[item.store]?.color||"#999", borderRadius:4 }} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize:12, color:"#bbb", fontFamily:"sans-serif" }}>{item.count}×</div>
-                </div>
-              ))
-            }
-          </div>
-          <div style={{ background:"#fff", borderRadius:16, padding:20, marginBottom:14, boxShadow:"0 2px 10px rgba(0,0,0,0.05)" }}>
-            <div style={{ fontSize:17, fontWeight:700, marginBottom:16 }}>🛒 This Week's Lists</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-              {Object.entries(STORES).map(([k,s]) => {
-                const its = lists[k]||[]; const done = its.filter(i=>i.checked).length;
-                return (
-                  <div key={k} style={{ background:s.light, borderRadius:12, padding:"14px 8px", textAlign:"center" }}>
-                    <div style={{ fontSize:20 }}>{s.emoji}</div>
-                    <div style={{ fontSize:26, fontWeight:700, color:s.color, lineHeight:1.1 }}>{its.length}</div>
-                    <div style={{ fontSize:10, color:"#bbb", fontFamily:"sans-serif", textTransform:"uppercase", letterSpacing:1, marginTop:2 }}>{s.short}</div>
-                    {done > 0 && <div style={{ fontSize:11, color:s.color, marginTop:4, fontFamily:"sans-serif" }}>{done} done</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          {likedMeals.length > 0 && (
-            <div style={{ background:"#fff", borderRadius:16, padding:20, boxShadow:"0 2px 10px rgba(0,0,0,0.05)" }}>
-              <div style={{ fontSize:17, fontWeight:700, marginBottom:14 }}>⭐ Favorite Meals</div>
-              {likedMeals.map(m => (
-                <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0", borderBottom:"1px solid #f5f5f5" }}>
-                  <span style={{ fontSize:22 }}>{m.emoji}</span>
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:600 }}>{m.name}</div>
-                    <div style={{ fontSize:12, color:"#aaa", fontFamily:"sans-serif" }}>{m.note}</div>
-                  </div>
+      {showAddStoreModal && (
+        <div style={styles.modal} onClick={() => setShowAddStoreModal(false)}>
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalTitle}>Add a Store</div>
+            <input
+              style={{ ...styles.input, width: "100%", boxSizing: "border-box", marginBottom: 14 }}
+              placeholder="Store name…"
+              value={newStoreName}
+              onChange={(e) => setNewStoreName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addStore()}
+              autoFocus
+            />
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#aaa", letterSpacing: 1, marginBottom: 8 }}>EMOJI</div>
+            <div style={styles.emojiGrid}>
+              {EMOJI_OPTIONS.map((em) => (
+                <div key={em} style={styles.emojiOption(newStoreEmoji === em)} onClick={() => setNewStoreEmoji(em)}>
+                  {em}
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Meals View ── */}
-      {view === "meals" && (
-        <div style={{ padding:16 }}>
-          <div style={{ fontSize:13, color:"#aaa", fontFamily:"sans-serif", marginBottom:14, lineHeight:1.6 }}>
-            Suggestions based on what's across <strong>all your lists</strong>. 👍 saves to favorites and bumps the meal up. 👎 hides it.
-          </div>
-          {scoredMeals.length === 0
-            ? <div style={{ textAlign:"center", color:"#ccc", fontFamily:"sans-serif", marginTop:40 }}>No matches yet — your lists will suggest meals as you add items!</div>
-            : scoredMeals.map(meal => (
-              <div key={meal.id} style={{ background:"#fff", borderRadius:16, padding:18, marginBottom:12, boxShadow:"0 2px 10px rgba(0,0,0,0.05)", borderLeft: meal.fb===1 ? "4px solid #4caf80" : "4px solid transparent" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                  <div style={{ flex:1, marginRight:12 }}>
-                    <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>{meal.emoji} {meal.name}</div>
-                    <div style={{ fontSize:13, color:"#777", lineHeight:1.55, marginBottom:10 }}>{meal.note}</div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
-                      {meal.tags.map(t => <span key={t} style={{ background:"#f5f5f5", borderRadius:20, padding:"3px 10px", fontSize:11, color:"#999", fontFamily:"sans-serif" }}>#{t}</span>)}
-                    </div>
-                    <div>
-                      <div style={{ fontSize:10, color:"#ccc", fontFamily:"sans-serif", letterSpacing:1, marginBottom:3, textTransform:"uppercase" }}>{Math.round(meal.match*100)}% of ingredients in your lists</div>
-                      <div style={{ height:3, background:"#f0f0f0", borderRadius:4 }}>
-                        <div style={{ height:3, width:`${meal.match*100}%`, background:"#4caf80", borderRadius:4 }} />
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    <button onClick={() => rateMeal(meal.id, meal.fb===1?0:1)} style={{ width:40, height:40, borderRadius:"50%", border:"none", background: meal.fb===1?"#e8f5e9":"#f5f5f5", fontSize:19, cursor:"pointer", boxShadow: meal.fb===1?"0 0 0 2px #4caf80":"none" }}>👍</button>
-                    <button onClick={() => rateMeal(meal.id, meal.fb===-1?0:-1)} style={{ width:40, height:40, borderRadius:"50%", border:"none", background: meal.fb===-1?"#fce4ec":"#f5f5f5", fontSize:19, cursor:"pointer", boxShadow: meal.fb===-1?"0 0 0 2px #e57373":"none" }}>👎</button>
-                  </div>
-                </div>
-              </div>
-            ))
-          }
-          {Object.values(mealFeedback).some(v => v===-1) && (
-            <div style={{ textAlign:"center", marginTop:8 }}>
-              <button onClick={() => { const c = Object.fromEntries(Object.entries(mealFeedback).filter(([,v])=>v!==-1)); setMealFeedback(c); }} style={{ background:"none", border:"1px solid #eee", borderRadius:20, padding:"6px 16px", fontSize:12, color:"#bbb", cursor:"pointer", fontFamily:"sans-serif" }}>
-                Restore hidden meals
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Add Drawer ── */}
-      {adding && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:200, display:"flex", alignItems:"flex-end" }} onClick={() => setAdding(false)}>
-          <div style={{ background:"#fff", width:"100%", maxWidth:480, margin:"0 auto", borderRadius:"22px 22px 0 0", padding:"24px 20px 36px" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:19, fontWeight:700, marginBottom:18 }}>Add to {S.name}</div>
-            <input value={form.name} onChange={e => setForm(f=>({...f, name:e.target.value}))} onKeyDown={e => e.key==="Enter" && addItem()}
-              style={{ width:"100%", border:"2px solid #eee", borderRadius:12, padding:"13px 14px", fontSize:16, fontFamily:"Georgia,serif", outline:"none", boxSizing:"border-box", marginBottom:12 }}
-              placeholder="Item name…" autoFocus />
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-              <input type="number" value={form.qty} onChange={e => setForm(f=>({...f, qty:e.target.value}))}
-                style={{ border:"2px solid #eee", borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"Georgia,serif", outline:"none" }} />
-              <input value={form.unit} onChange={e => setForm(f=>({...f, unit:e.target.value}))}
-                style={{ border:"2px solid #eee", borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"Georgia,serif", outline:"none" }} placeholder="unit" />
-            </div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>
-              {Object.entries(CAT_META).map(([k,m]) => (
-                <button key={k} onClick={() => setForm(f=>({...f, cat:k}))} style={{ background: form.cat===k?S.color:"#f5f5f5", color: form.cat===k?"#fff":"#888", border:"none", borderRadius:20, padding:"5px 12px", fontSize:12, cursor:"pointer", fontFamily:"sans-serif" }}>{m.emoji} {m.label}</button>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#aaa", letterSpacing: 1, marginBottom: 8 }}>COLOR</div>
+            <div style={styles.colorGrid}>
+              {COLOR_OPTIONS.map((c) => (
+                <div key={c} style={styles.colorSwatch(c, newStoreColor === c)} onClick={() => setNewStoreColor(c)} />
               ))}
             </div>
-            <button onClick={addItem} style={{ width:"100%", background:S.color, color:"#fff", border:"none", borderRadius:14, padding:15, fontSize:16, fontFamily:"Georgia,serif", fontWeight:700, cursor:"pointer" }}>Add Item</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── New Week Modal ── */}
-      {confirmReset && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }} onClick={() => setConfirmReset(false)}>
-          <div style={{ background:"#fff", borderRadius:24, padding:"32px 28px", maxWidth:340, width:"100%", textAlign:"center" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:42, marginBottom:12 }}>✨</div>
-            <div style={{ fontSize:20, fontWeight:700, marginBottom:8 }}>Start a New Week?</div>
-            <div style={{ fontSize:14, color:"#999", fontFamily:"sans-serif", lineHeight:1.6, marginBottom:28 }}>
-              This will uncheck all items across <strong>all three stores</strong> so you're ready for next week's shop.
+            <div style={styles.modalBtnRow}>
+              <button style={styles.cancelBtn} onClick={() => setShowAddStoreModal(false)}>Cancel</button>
+              <button style={styles.confirmBtn(newStoreColor)} onClick={addStore}>Add Store</button>
             </div>
-            <button onClick={resetAll} style={{ width:"100%", background:S.color, color:"#fff", border:"none", borderRadius:14, padding:"15px", fontSize:16, fontFamily:"Georgia,serif", fontWeight:700, cursor:"pointer", marginBottom:10 }}>Reset All Lists</button>
-            <button onClick={() => setConfirmReset(false)} style={{ width:"100%", background:"none", border:"none", color:"#bbb", fontSize:14, fontFamily:"sans-serif", cursor:"pointer", padding:"8px" }}>Cancel</button>
           </div>
         </div>
       )}
 
-      {/* ── FAB ── */}
-      <button onClick={() => setAdding(a => !a)} style={{
-        position:"fixed", bottom:26,
-        right: "max(16px, calc(50vw - 224px))",
-        width:54, height:54, borderRadius:"50%",
-        background:S.color, color:"#fff", border:"none", fontSize:28,
-        cursor:"pointer", boxShadow:"0 4px 18px rgba(0,0,0,0.22)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        transform: adding?"rotate(45deg)":"none", transition:"transform 0.2s", zIndex:150
-      }}>+</button>
-    </div>
+      {showDeleteStoreModal && (
+        <div style={styles.modal} onClick={() => setShowDeleteStoreModal(null)}>
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalTitle}>Remove Store?</div>
+            <p style={{ color: "#666", fontSize: 14, lineHeight: 1.5 }}>
+              This will permanently delete{" "}
+              <strong>{stores.find((s) => s.id === showDeleteStoreModal)?.name}</strong> and all its items.
+            </p>
+            <div style={styles.modalBtnRow}>
+              <button style={styles.cancelBtn} onClick={() => setShowDeleteStoreModal(null)}>Cancel</button>
+              <button style={styles.confirmBtn("#e63946")} onClick={() => deleteStore(showDeleteStoreModal)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 // ─── Item Row Component ───────────────────────────────────────────────────────
-function ItemRow({ item, color, onToggle, onAdjust, onRemove, swipeActive, swipeDelta, onTouchStart, onTouchMove, onTouchEnd }) {
-  const delOp = swipeActive ? Math.min(1, Math.abs(swipeDelta)/80) : 0;
+function ItemRow({ item, storeColor, styles, onToggle, onToggleSkip, onDelete, onQty }) {
+  const swipe = useSwipe(onDelete);
   return (
-    <div style={{ position:"relative", overflow:"hidden" }}>
-      <div style={{ position:"absolute", right:0, top:0, bottom:0, width:80, background:"#ff3b3b", display:"flex", alignItems:"center", justifyContent:"center", opacity:delOp }}>
-        <span style={{ color:"#fff", fontSize:18 }}>🗑</span>
+    <div style={styles.itemRow(item.checked, item.skipped)} {...swipe}>
+      <div
+        style={styles.checkbox(item.checked, storeColor || "#333")}
+        onClick={!item.skipped ? onToggle : undefined}
+      >
+        {item.checked && <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>✓</span>}
       </div>
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
-        display:"flex", alignItems:"center", padding:"11px 14px",
-        background: item.checked?"#fafafa":"#fff", borderBottom:"1px solid #f3f3f3",
-        transform: swipeActive?`translateX(${swipeDelta}px)`:"translateX(0)",
-        transition: swipeActive?"none":"transform 0.25s",
-        opacity: item.checked?0.45:1,
-      }}>
-        <button onClick={onToggle} style={{ width:26, height:26, borderRadius:"50%", flexShrink:0, background: item.checked?color:"#fff", border:`2px solid ${item.checked?color:"#ddd"}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", marginRight:12, transition:"all 0.18s", fontSize:12 }}>
-          {item.checked && <span style={{ color:"#fff", fontWeight:700 }}>✓</span>}
-        </button>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:15.5, textDecoration: item.checked?"line-through":"none", color: item.checked?"#ccc":"#1a1a1a", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</div>
-          {item.unit && <div style={{ fontSize:11, color:"#ccc", fontFamily:"sans-serif", marginTop:1 }}>{item.unit}</div>}
+      <span style={styles.itemName(item.checked, item.skipped)}>{item.name}</span>
+      {!item.skipped && (
+        <div style={styles.qtyRow}>
+          <div style={styles.qtyBtn} onClick={() => onQty(-1)}>−</div>
+          <span style={styles.qtyNum}>{item.qty || 1}</span>
+          <div style={styles.qtyBtn} onClick={() => onQty(1)}>+</div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:7, flexShrink:0 }}>
-          <button onClick={() => onAdjust(-0.25)} style={{ width:27, height:27, borderRadius:"50%", background:"#f4f4f4", border:"none", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#666" }}>−</button>
-          <span style={{ fontSize:14, fontWeight:600, minWidth:24, textAlign:"center", color: item.checked?"#ccc":"#111" }}>{item.qty}</span>
-          <button onClick={() => onAdjust(0.25)} style={{ width:27, height:27, borderRadius:"50%", background:"#f4f4f4", border:"none", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#666" }}>+</button>
-        </div>
-        <button onClick={onRemove} style={{ marginLeft:8, background:"none", border:"none", color:"#ddd", fontSize:18, cursor:"pointer", lineHeight:1 }}>×</button>
-      </div>
+      )}
+      <button style={styles.skipBtn(item.skipped)} onClick={onToggleSkip} title={item.skipped ? "Un-skip this week" : "Skip this week"}>
+        {item.skipped ? "⏸️" : "⏸"}
+      </button>
+      <button style={styles.deleteBtn} onClick={onDelete}>✕</button>
     </div>
   );
 }

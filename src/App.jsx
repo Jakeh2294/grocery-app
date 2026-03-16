@@ -283,9 +283,11 @@ export default function App() {
   }
 
   // ── Render helpers ──────────────────────────────────────────────────────────
-  const visibleItems = showSkipped
-    ? activeList.filter((i) => i.skipped)
-    : activeList.filter((i) => !i.skipped);
+ const visibleItems = showSkipped
+  ? activeList.filter((i) => i.skipped)
+  : activeList.filter((i) => !i.skipped && !i.checked);
+
+const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
 
   const skippedCount = activeList.filter((i) => i.skipped).length;
 
@@ -734,25 +736,39 @@ export default function App() {
               )}
 
               {groupByCategory(visibleItems).map(([cat, items]) => (
-                <div key={cat}>
-                  <div style={styles.categoryLabel}>{cat}</div>
-                  {items.map((item) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      storeColor={activeStore?.color}
-                      styles={styles}
-                      onToggle={() => toggleItem(item.id)}
-                      onToggleSkip={() => toggleSkip(item.id)}
-                      onDelete={() => deleteItem(item.id)}
-                      onQty={(d) => changeQty(item.id, d)}
-                    />
-                  ))}
-                </div>
-              ))}
-            </>
-          )}
-
+  <div key={cat}>
+    <div style={styles.categoryLabel}>{cat}</div>
+    {items.map((item) => (
+      <ItemRow
+        key={item.id}
+        item={item}
+        storeColor={activeStore?.color}
+        styles={styles}
+        onToggle={() => toggleItem(item.id)}
+        onToggleSkip={() => toggleSkip(item.id)}
+        onDelete={() => deleteItem(item.id)}
+        onQty={(d) => changeQty(item.id, d)}
+      />
+    ))}
+  </div>
+))}
+{checkedItems.length > 0 && (
+  <div>
+    <div style={styles.categoryLabel}>checked off</div>
+    {checkedItems.map((item) => (
+      <ItemRow
+        key={item.id}
+        item={item}
+        storeColor={activeStore?.color}
+        styles={styles}
+        onToggle={() => toggleItem(item.id)}
+        onToggleSkip={() => toggleSkip(item.id)}
+        onDelete={() => deleteItem(item.id)}
+        onQty={(d) => changeQty(item.id, d)}
+      />
+    ))}
+  </div>
+)}
           {activeTab === "search" && (
             <>
               <input

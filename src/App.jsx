@@ -769,6 +769,7 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
     ))}
   </div>
 )}
+              
           {activeTab === "search" && (
             <>
               <input

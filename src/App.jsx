@@ -217,10 +217,6 @@ export default function App() {
   const [newStoreColor, setNewStoreColor] = useState("#3a86ff");
   const [showSkipped, setShowSkipped] = useState(false);
 
-  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
-
-  const { stores, lists, mealFeedback, insights } = state;
-
   // ── Firestore real-time sync ────────────────────────────────────────────────
   useEffect(() => {
     isMounted.current = true;
@@ -250,6 +246,10 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
+
+  const { stores, lists, mealFeedback, insights } = state;
 
   // ── Persist to Firestore ────────────────────────────────────────────────────
   function persist(newState) {

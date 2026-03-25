@@ -205,9 +205,6 @@ export default function App() {
   const [state, setState] = useState(makeDefaultState);
   const [syncStatus, setSyncStatus] = useState("loading"); // "loading" | "synced" | "error"
   const isMounted = useRef(true);
-
-  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
-
   const [activeTab, setActiveTab] = useState("store");
   const [activeStoreId, setActiveStoreId] = useState("traderjoes");
   const [newItemText, setNewItemText] = useState("");
@@ -219,6 +216,8 @@ export default function App() {
   const [newStoreEmoji, setNewStoreEmoji] = useState("🛒");
   const [newStoreColor, setNewStoreColor] = useState("#3a86ff");
   const [showSkipped, setShowSkipped] = useState(false);
+
+  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
 
   const { stores, lists, mealFeedback, insights } = state;
 

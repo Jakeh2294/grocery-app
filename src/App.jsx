@@ -148,12 +148,65 @@ function makeDefaultState() {
 
 // ─── Firestore doc reference ──────────────────────────────────────────────────
 const FIRESTORE_DOC = doc(db, "grocery", "shared");
+const CORRECT_PIN = import.meta.env.VITE_APP_PIN;
+
+// ─── PIN Screen ───────────────────────────────────────────────────────────────
+function PinScreen({ onUnlock }) {
+  const [digits, setDigits] = useState("");
+  const [shake, setShake] = useState(false);
+
+  function handleDigit(d) {
+    if (digits.length >= 4) return;
+    const next = digits + d;
+    setDigits(next);
+    if (next.length === 4) {
+      if (next === CORRECT_PIN) {
+        sessionStorage.setItem("pin_ok", "1");
+        onUnlock();
+      } else {
+        setShake(true);
+        setTimeout(() => { setShake(false); setDigits(""); }, 600);
+      }
+    }
+  }
+
+  function handleDelete() {
+    setDigits((d) => d.slice(0, -1));
+  }
+
+  return (
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+      <div style={{ fontFamily: "'Nunito', sans-serif", minHeight: "100dvh", background: "#f8f5f0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32 }}>
+        <div style={{ fontSize: 36 }}>🛒</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1a1a" }}>Enter PIN</div>
+        <div style={{ display: "flex", gap: 14, animation: shake ? "shake 0.4s" : "none" }}>
+          {[0,1,2,3].map((i) => (
+            <div key={i} style={{ width: 18, height: 18, borderRadius: "50%", background: digits.length > i ? "#1a1a1a" : "#e0dbd3", transition: "background 0.15s" }} />
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 72px)", gap: 12 }}>
+          {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((d, i) => (
+            <button key={i} onClick={() => d === "⌫" ? handleDelete() : d !== "" ? handleDigit(d) : null}
+              style={{ height: 72, borderRadius: 16, border: "none", background: d === "" ? "transparent" : "#fff", fontSize: d === "⌫" ? 20 : 24, fontWeight: 700, color: "#1a1a1a", cursor: d === "" ? "default" : "pointer", boxShadow: d === "" ? "none" : "0 1px 4px rgba(0,0,0,0.08)", fontFamily: "'Nunito', sans-serif" }}>
+              {d}
+            </button>
+          ))}
+        </div>
+        <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }`}</style>
+      </div>
+    </>
+  );
+}
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("pin_ok") === "1");
   const [state, setState] = useState(makeDefaultState);
   const [syncStatus, setSyncStatus] = useState("loading"); // "loading" | "synced" | "error"
   const isMounted = useRef(true);
+
+  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
 
   const [activeTab, setActiveTab] = useState("store");
   const [activeStoreId, setActiveStoreId] = useState("traderjoes");

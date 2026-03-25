@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { db } from "./firebase";
+import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DEFAULT_STORES = [
@@ -144,9 +146,15 @@ function makeDefaultState() {
   };
 }
 
+// ─── Firestore doc reference ──────────────────────────────────────────────────
+const FIRESTORE_DOC = doc(db, "grocery", "shared");
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [state, setState] = useState(makeDefaultState);
+  const [syncStatus, setSyncStatus] = useState("loading"); // "loading" | "synced" | "error"
+  const isMounted = useRef(true);
+
   const [activeTab, setActiveTab] = useState("store");
   const [activeStoreId, setActiveStoreId] = useState("traderjoes");
   const [newItemText, setNewItemText] = useState("");
@@ -161,23 +169,40 @@ export default function App() {
 
   const { stores, lists, mealFeedback, insights } = state;
 
-  // ── localStorage persistence ────────────────────────────────────────────────
+  // ── Firestore real-time sync ────────────────────────────────────────────────
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("groceryState");
-      if (saved) setState(JSON.parse(saved));
-    } catch (e) {
-      console.warn("Could not load saved state", e);
-    }
+    isMounted.current = true;
+
+    // First, check if doc exists — if not, seed it with defaults
+    getDoc(FIRESTORE_DOC).then((snap) => {
+      if (!snap.exists()) {
+        setDoc(FIRESTORE_DOC, makeDefaultState());
+      }
+    }).catch(() => setSyncStatus("error"));
+
+    // Subscribe to real-time updates
+    const unsubscribe = onSnapshot(
+      FIRESTORE_DOC,
+      (snap) => {
+        if (!isMounted.current) return;
+        if (snap.exists()) {
+          setState(snap.data());
+          setSyncStatus("synced");
+        }
+      },
+      () => setSyncStatus("error")
+    );
+
+    return () => {
+      isMounted.current = false;
+      unsubscribe();
+    };
   }, []);
 
+  // ── Persist to Firestore ────────────────────────────────────────────────────
   function persist(newState) {
     setState(newState);
-    try {
-      localStorage.setItem("groceryState", JSON.stringify(newState));
-    } catch (e) {
-      console.warn("Could not save state", e);
-    }
+    setDoc(FIRESTORE_DOC, newState).catch(() => setSyncStatus("error"));
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -210,13 +235,13 @@ export default function App() {
   }
 
   function toggleSkip(itemId) {
-  const updated = activeList.map((item) =>
-    item.id === itemId ? { ...item, skipped: !item.skipped, checked: false } : item
-  );
-  persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
-  const remainingSkipped = updated.filter((i) => i.skipped).length;
-  if (remainingSkipped === 0) setShowSkipped(false);
-}
+    const updated = activeList.map((item) =>
+      item.id === itemId ? { ...item, skipped: !item.skipped, checked: false } : item
+    );
+    persist({ ...state, lists: { ...lists, [activeStoreId]: updated } });
+    const remainingSkipped = updated.filter((i) => i.skipped).length;
+    if (remainingSkipped === 0) setShowSkipped(false);
+  }
 
   function deleteItem(itemId) {
     const updated = activeList.filter((item) => item.id !== itemId);
@@ -283,12 +308,11 @@ export default function App() {
   }
 
   // ── Render helpers ──────────────────────────────────────────────────────────
- const visibleItems = showSkipped
-  ? activeList.filter((i) => i.skipped)
-  : activeList.filter((i) => !i.skipped && !i.checked);
+  const visibleItems = showSkipped
+    ? activeList.filter((i) => i.skipped)
+    : activeList.filter((i) => !i.skipped && !i.checked);
 
-const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
-
+  const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
   const skippedCount = activeList.filter((i) => i.skipped).length;
 
   const allItems = stores.flatMap((s) =>
@@ -343,6 +367,18 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
       fontWeight: 800,
       color: "#1a1a1a",
       letterSpacing: "-0.3px",
+    },
+    headerRight: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    syncDot: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: syncStatus === "synced" ? "#06d6a0" : syncStatus === "error" ? "#e63946" : "#ffd166",
+      flexShrink: 0,
     },
     newWeekBtn: {
       fontSize: 12,
@@ -665,6 +701,19 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
     }),
   };
 
+  // ── Loading state ────────────────────────────────────────────────────────────
+  if (syncStatus === "loading") {
+    return (
+      <>
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+        <div style={{ ...styles.app, alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🛒</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#aaa" }}>Loading your lists…</div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
@@ -672,9 +721,12 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
       <div style={styles.app}>
         <div style={styles.header}>
           <span style={styles.headerTitle}>🛒 Groceries</span>
-          <button style={styles.newWeekBtn} onClick={() => setShowNewWeekModal(true)}>
-            New Week
-          </button>
+          <div style={styles.headerRight}>
+            <div style={styles.syncDot} title={syncStatus === "synced" ? "Synced" : syncStatus === "error" ? "Sync error" : "Connecting…"} />
+            <button style={styles.newWeekBtn} onClick={() => setShowNewWeekModal(true)}>
+              New Week
+            </button>
+          </div>
         </div>
 
         {activeTab === "store" && (
@@ -720,14 +772,14 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
               </div>
 
               {skippedCount > 0 && (
-  <div style={styles.skippedToggle} onClick={() => setShowSkipped((v) => !v)}>
-    <span style={{ fontSize: 14 }}>{showSkipped ? "◀" : "▸"}</span>
-    <span style={styles.skippedToggleText}>
-      {showSkipped ? "← Back to list" : "Show skipped this week"}
-    </span>
-    <span style={styles.skippedBadge}>{skippedCount}</span>
-  </div>
-)}
+                <div style={styles.skippedToggle} onClick={() => setShowSkipped((v) => !v)}>
+                  <span style={{ fontSize: 14 }}>{showSkipped ? "◀" : "▸"}</span>
+                  <span style={styles.skippedToggleText}>
+                    {showSkipped ? "← Back to list" : "Show skipped this week"}
+                  </span>
+                  <span style={styles.skippedBadge}>{skippedCount}</span>
+                </div>
+              )}
 
               {visibleItems.length === 0 && (
                 <div style={{ textAlign: "center", color: "#bbb", marginTop: 40, fontSize: 14 }}>
@@ -771,7 +823,7 @@ const checkedItems = activeList.filter((i) => !i.skipped && i.checked);
               )}
             </>
           )}
-              
+
           {activeTab === "search" && (
             <>
               <input
